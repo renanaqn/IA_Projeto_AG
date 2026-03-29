@@ -183,6 +183,7 @@ def executar_ag(grafo, origem, destino, num_geracoes=50, tamanho_pop=30, taxa_mu
     
     melhor_rota_global = None
     menor_custo_global = float('inf')
+    historico_custos = []
     
     # loop das gerações
     for geracao in range(num_geracoes):
@@ -200,6 +201,8 @@ def executar_ag(grafo, origem, destino, num_geracoes=50, tamanho_pop=30, taxa_mu
             melhor_rota_global = melhor_rota_atual.copy()
             print(f"Geração {geracao+1}: Novo recorde! Custo baixou para {menor_custo_global:.2f} km")
             
+        historico_custos.append(menor_custo_global)
+
         # elitismo: salva o melhor global
         nova_populacao = []
         
@@ -232,18 +235,38 @@ def executar_ag(grafo, origem, destino, num_geracoes=50, tamanho_pop=30, taxa_mu
     print(f"Rota Detalhada: {' -> '.join(nomes_cidades)}")
     print(f"Custo Total Final: {menor_custo_global:.2f} km\n")
     
-    return melhor_rota_global, menor_custo_global
+    return melhor_rota_global, menor_custo_global, historico_custos
+
 
 # decisão da rota a ser otimizada
 origem = '#1'  # #1 - Viaduto de Ponta Negra (Natal)
-destino = '#2' # #11 - Canguaretama
+destino = '#2' # #11 - Currais Novos
 
 # rodando com 50 indivíduos por 50 gerações
-melhor_caminho, custo = executar_ag(G, origem, destino, num_geracoes=50, tamanho_pop=50, taxa_mutacao=0.2)
+melhor_caminho, custo, historico = executar_ag(G, origem, destino, num_geracoes=50, tamanho_pop=10, taxa_mutacao=0.1)
+
+def plotar_convergencia(historico):
+    plt.figure(figsize=(10, 5))
+    
+    # plota a linha azul com bolinhas marcando cada geração
+    plt.plot(range(1, len(historico) + 1), historico, marker='o', linestyle='-', color='b', markersize=4)
+    
+    plt.title('Curva de Convergência do AG', fontsize=14, fontweight='bold')
+    plt.xlabel('Gerações', fontsize=12)
+    plt.ylabel('Melhor Custo (km)', fontsize=12)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    
+    # como as rotas iniciais tem custo de 99999, o gráfico pode ficar esmagado.
+    # vamos focar apenas nos custos reais (< 10000) se eles existirem a partir da 2ª geracao
+    custos_reais = [c for c in historico if c < 99000]
+    if custos_reais:
+        plt.ylim(min(custos_reais) - 50, max(custos_reais) + 50)
+        
+    plt.show()
 
 # plotagem do grafico com a rota final
 def plotar_mapa(grafo, rota_vencedora):
-    print("\nGerando o mapa visual... Feche a janela do gráfico para encerrar o programa.")
+    print("\nGerando o mapa visual...")
     
     # pega as coordenadas (Longitude e Latitude) que salvamos na hora de carregar o mapa
     posicoes = nx.get_node_attributes(grafo, 'pos')
@@ -269,6 +292,9 @@ def plotar_mapa(grafo, rota_vencedora):
     plt.title(f"Algoritmo Genético: Rota Otimizada ({custo:.2f} km)", fontsize=16, fontweight='bold')
     plt.axis('equal') # Garante que o mapa não fique esticado
     plt.show() # Abre a janela com o gráfico
+
+# plota a curva de convergencia do AG
+plotar_convergencia(historico)
 
 # função para desenhar a arte final
 plotar_mapa(G, melhor_caminho)
