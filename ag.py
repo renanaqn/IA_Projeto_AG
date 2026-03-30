@@ -2,6 +2,8 @@ import networkx as nx # biblioteca para grafos
 import random
 import matplotlib.pyplot as plt
 
+# === Ingestão de Dados ===
+
 def carregar_mapa(arquivo_pontos, arquivo_rotas):
     mapa = nx.Graph() # cria o grafo não-direcionado (mão dupla)
     
@@ -41,13 +43,18 @@ print(f"Mapa carregado com sucesso!")
 print(f"Total de Cidades/Entroncamentos: {G.number_of_nodes()}")
 print(f"Total de Estradas: {G.number_of_edges()}")
 
-# funcoes base do algoritmo genetico
+# === Funções base do algoritmo genético ===
 def gerar_individuo(grafo, origem, destino):
     """
     Cria uma rota aleatória do ponto de origem ao destino
     faz uma caminhada cega pelo grafo evitando voltar por onde já passou.
     Foi usado a Codificação por Valor, onde cada cromossomo é uma 
-    sequencia de IDs das cidades (todo: add exemplo de sequencia de rota)
+    sequencia de IDs das cidades.
+
+    Um exemplo de cromossomo:
+    ind = [#1, #3, #5, #5A, #63] -> representa a rota Natal (Viaduto de Ponta Negra) -> Parnamirim -> Macaiba -> Macaiba (Tabajara) -> Currais Novos
+    todo: lembrar de fazer ym fluxograma dos individuos ao longo do tempo (e um gif)
+    todo: possibilidade de a partir de um plano cartesiano entre a origem e destino, computar a rota
     """
     caminho = [origem]
     atual = origem
@@ -165,7 +172,6 @@ def mutacao(individuo, grafo, destino, taxa_mutacao=0.1):
         
     return individuo
 
-# execucao principal do AG
 def selecao_torneio(populacao, grafo, destino, k=3):
     """
     A seleção usada é a de torneio, onde sorteia 'k' indivíduos aleatórios da população.
@@ -175,6 +181,7 @@ def selecao_torneio(populacao, grafo, destino, k=3):
     melhor = min(competidores, key=lambda ind: calcular_custo(grafo, ind, destino))
     return melhor
 
+# === Execução principal do AG ===
 def executar_ag(grafo, origem, destino, num_geracoes=50, tamanho_pop=30, taxa_mutacao=0.2):
     print(f"\nIniciando a Evolução: Saindo de {grafo.nodes[origem]['nome']} para {grafo.nodes[destino]['nome']}")
     
@@ -237,14 +244,14 @@ def executar_ag(grafo, origem, destino, num_geracoes=50, tamanho_pop=30, taxa_mu
     
     return melhor_rota_global, menor_custo_global, historico_custos
 
+# === Decisão da rota a ser otimizada ===
+origem = '#13'  # #1 - Viaduto de Ponta Negra (Natal)
+destino = '#1' # #11 - Currais Novos
 
-# decisão da rota a ser otimizada
-origem = '#1'  # #1 - Viaduto de Ponta Negra (Natal)
-destino = '#2' # #11 - Currais Novos
-
-# rodando com 50 indivíduos por 50 gerações
+# rodando com 10 indivíduos por 50 gerações
 melhor_caminho, custo, historico = executar_ag(G, origem, destino, num_geracoes=50, tamanho_pop=10, taxa_mutacao=0.1)
 
+# === Visualização dos Resultados ===
 def plotar_convergencia(historico):
     plt.figure(figsize=(10, 5))
     
