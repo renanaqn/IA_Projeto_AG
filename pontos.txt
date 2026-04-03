@@ -51,4 +51,3 @@ ID;Nome;Latitude;Longitude
 #95;Serrinha;-6.2696;-35.5017
 #117;Santa Maria;-5.8420;-35.6909
 #143;Triunfo Potiguar;-5.8591;-37.1964
-#0;Fernando de Noronha;-3.8461;-32.4120

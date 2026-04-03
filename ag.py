@@ -1,6 +1,7 @@
 import networkx as nx # biblioteca para grafos
 import random
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation #biblioteca para os gifs
 
 # === Ingestão de Dados ===
 
@@ -60,7 +61,7 @@ def gerar_individuo(grafo, origem, destino):
     atual = origem
     
     # vamos tentar encontrar um caminho, mas com um limite para evitar loops infinitos
-    limite_tentativas = 100 
+    limite_tentativas = 300 
     tentativas = 0
     
     while atual != destino and tentativas < limite_tentativas:
@@ -146,29 +147,30 @@ def cruzamento(pai1, pai2):
 
 def mutacao(individuo, grafo, destino, taxa_mutacao=0.1):
     """
-    Para a mutação manter a variedade genetica e contornar os mínimos locais, ela 
-    apaga uma parte aleatoria da rota e força o algoritmo a achar um caminho novo 
-    a partir daquele ponto.
-
-    Foi mantido a taxa baixa (ex: 0.1) conforme recomendado em aula para não virar busca aleatoria.
+    Tenta apagar apenas um pequeno trecho no meio da rota
+    e achar um caminho alternativo local, preservando o início e o fim.
     """
-    # só muta se o número sorteado for menor que a taxa E se a rota for maior que 2 cidades
-    if random.random() < taxa_mutacao and len(individuo) > 2:
+    if random.random() < taxa_mutacao and len(individuo) > 3:
+        # Escolhe um ponto no meio
+        idx_mutacao = random.randint(1, len(individuo) - 3)
+        ponto_a = individuo[idx_mutacao]
         
-        # escolhe uma cidade aleatória no meio do caminho para sofrer mutação
-        idx_mutacao = random.randint(1, len(individuo) - 2)
-        ponto_mutacao = individuo[idx_mutacao]
+        # Em vez de ir até o destino, tenta ir só até 2 cidades pra frente
+        ponto_b = individuo[idx_mutacao + 2] 
         
-        # preserva o caminho até o ponto de mutação
-        nova_rota = individuo[:idx_mutacao]
+        # Gera um desvio curto entre ponto_a e ponto_b
+        desvio = gerar_individuo(grafo, ponto_a, ponto_b)
         
-        # faz uma nova caminhada aleatória do ponto de mutação até o destino
-        caminho_restante = gerar_individuo(grafo, ponto_mutacao, destino)
-        
-        # junta a rota velha com o novo caminho
-        nova_rota.extend(caminho_restante)
-        
-        return nova_rota
+        # Se o desvio foi bem sucedido (chegou no ponto_b), costura a nova rota
+        if desvio[-1] == ponto_b:
+            nova_rota = individuo[:idx_mutacao] + desvio[:-1] + individuo[idx_mutacao+2:]
+            return nova_rota
+            
+        # Se falhou, aplica a mutação antiga (vai até o destino) como plano B
+        nova_rota_b = individuo[:idx_mutacao]
+        caminho_restante = gerar_individuo(grafo, ponto_a, destino)
+        nova_rota_b.extend(caminho_restante)
+        return nova_rota_b
         
     return individuo
 
@@ -182,7 +184,7 @@ def selecao_torneio(populacao, grafo, destino, k=3):
     return melhor
 
 # === Execução principal do AG ===
-def executar_ag(grafo, origem, destino, num_geracoes=50, tamanho_pop=30, taxa_mutacao=0.2):
+def executar_ag(grafo, origem, destino, num_geracoes=50, tamanho_pop=50, taxa_mutacao=0.1):
     print(f"\nIniciando a Evolução: Saindo de {grafo.nodes[origem]['nome']} para {grafo.nodes[destino]['nome']}")
     
     # cria a população inicial
@@ -190,7 +192,8 @@ def executar_ag(grafo, origem, destino, num_geracoes=50, tamanho_pop=30, taxa_mu
     
     melhor_rota_global = None
     menor_custo_global = float('inf')
-    historico_custos = []
+    historico_custos = [] 
+    historico_rotas_gif = [] # lista de rotas para o GIF
     
     # loop das gerações
     for geracao in range(num_geracoes):
@@ -209,10 +212,13 @@ def executar_ag(grafo, origem, destino, num_geracoes=50, tamanho_pop=30, taxa_mu
             print(f"Geração {geracao+1}: Novo recorde! Custo baixou para {menor_custo_global:.2f} km")
             
         historico_custos.append(menor_custo_global)
-
-        # elitismo: salva o melhor global
-        nova_populacao = []
         
+        # salva o frame da geração atual
+        historico_rotas_gif.append(melhor_rota_global.copy())
+
+        # elitismo: salva o melhor global            
+        nova_populacao = []
+
         # regra do Elitismo: O campeão atual passa direto para a próxima geração intacto
         nova_populacao.append(melhor_rota_global)
         
@@ -230,26 +236,62 @@ def executar_ag(grafo, origem, destino, num_geracoes=50, tamanho_pop=30, taxa_mu
             filho2 = mutacao(filho2, grafo, destino, taxa_mutacao)
             
             nova_populacao.extend([filho1, filho2])
-            
+        
         # corta excessos caso a lista passe do tamanho exato
         populacao = nova_populacao[:tamanho_pop]
         
     print(f"\nEvolução Concluída após {num_geracoes} gerações!")
-    print(f"Melhor Caminho: {melhor_rota_global}")
-    
+    print(f"Custo Total Final: {menor_custo_global:.2f} km\n")
+
     # imprime os nomes das cidades para ficar legível
     nomes_cidades = [grafo.nodes[n]['nome'] for n in melhor_rota_global]
     print(f"Rota Detalhada: {' -> '.join(nomes_cidades)}")
     print(f"Custo Total Final: {menor_custo_global:.2f} km\n")
     
-    return melhor_rota_global, menor_custo_global, historico_custos
+    
+    # Retorna o historico de rotas junto com o resto
+    return melhor_rota_global, menor_custo_global, historico_custos, historico_rotas_gif
+
+def gerar_gif_evolucao(grafo, historico_rotas, nome_arquivo="evolucao.gif"):
+    print("\nRenderizando o GIF da evolução... Isso pode levar alguns segundos.")
+    
+    posicoes = nx.get_node_attributes(grafo, 'pos')
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Esta função é chamada para desenhar CADA quadro do GIF
+    def atualizar_frame(frame):
+        ax.clear() # Limpa a tela anterior
+        rota = historico_rotas[frame]
+        
+        # Desenha o mapa de fundo
+        nx.draw(grafo, posicoes, node_size=15, node_color='lightgray', edge_color='lightgray', with_labels=False, ax=ax)
+        
+        if rota:
+            # Desenha as cidades da rota e a linha vermelha
+            nx.draw_networkx_nodes(grafo, posicoes, nodelist=rota, node_color='#1f78b4', node_size=50, ax=ax)
+            arestas_rota = [(rota[i], rota[i+1]) for i in range(len(rota)-1)]
+            nx.draw_networkx_edges(grafo, posicoes, edgelist=arestas_rota, edge_color='red', width=3.0, ax=ax)
+        
+        # Atualiza o título dinamicamente com o custo atual caindo
+        custo = calcular_custo(grafo, rota, rota[-1]) if rota else 0
+        ax.set_title(f"Geração {frame+1} | Melhor Rota: {custo:.2f} km", fontsize=14, fontweight='bold')
+        ax.axis('equal')
+
+    # Cria a animação: frames é a quantidade de gerações, interval é a velocidade em ms (200 = 5 frames por segundo)
+    ani = animation.FuncAnimation(fig, atualizar_frame, frames=len(historico_rotas), interval=150)
+    
+    # Salva o arquivo na pasta do seu projeto
+    ani.save(nome_arquivo, writer='pillow')
+    print(f"GIF salvo com sucesso como '{nome_arquivo}'!")
+    plt.close(fig) # Fecha a janela para não travar o programa
+
 
 # === Decisão da rota a ser otimizada ===
-origem = '#13'  # #1 - Viaduto de Ponta Negra (Natal)
-destino = '#1' # #11 - Currais Novos
+origem = '#1'  # #1 - Viaduto de Ponta Negra (Natal)
+destino = '#13' # #11 - Currais Novos
 
 # rodando com 10 indivíduos por 50 gerações
-melhor_caminho, custo, historico = executar_ag(G, origem, destino, num_geracoes=50, tamanho_pop=10, taxa_mutacao=0.1)
+melhor_caminho, custo, historico, rotas_gif = executar_ag(G, origem, destino, num_geracoes=80, tamanho_pop=40, taxa_mutacao=0.1)
 
 # === Visualização dos Resultados ===
 def plotar_convergencia(historico):
@@ -269,7 +311,7 @@ def plotar_convergencia(historico):
     if custos_reais:
         plt.ylim(min(custos_reais) - 50, max(custos_reais) + 50)
         
-    plt.show()
+    plt.show(block=False) # mostra o gráfico sem bloquear a execução do programa
 
 # plotagem do grafico com a rota final
 def plotar_mapa(grafo, rota_vencedora):
@@ -299,6 +341,9 @@ def plotar_mapa(grafo, rota_vencedora):
     plt.title(f"Algoritmo Genético: Rota Otimizada ({custo:.2f} km)", fontsize=16, fontweight='bold')
     plt.axis('equal') # Garante que o mapa não fique esticado
     plt.show() # Abre a janela com o gráfico
+
+
+gerar_gif_evolucao(G, rotas_gif, "evolucao_rotas.gif")
 
 # plota a curva de convergencia do AG
 plotar_convergencia(historico)
