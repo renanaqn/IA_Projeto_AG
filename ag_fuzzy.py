@@ -2,10 +2,10 @@ import networkx as nx # biblioteca para grafos
 import random
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation #biblioteca para os gifs
+from fuzzy import avaliar_rodovia 
 
 # === Ingestão de Dados ===
-
-def carregar_mapa(arquivo_pontos, arquivo_rotas):
+def carregar_mapa_fuzzy(arquivo_pontos, arquivo_rotas_fuzzy):
     mapa = nx.Graph() # cria o grafo não-direcionado (mão dupla)
     
     # carrega os nós (cidades/entroncamentos)
@@ -22,7 +22,7 @@ def carregar_mapa(arquivo_pontos, arquivo_rotas):
                 mapa.add_node(id_ponto, nome=nome, pos=(lon, lat))
                 
     # carrega as arestas (rodovias) e as distâncias
-    with open(arquivo_rotas, 'r', encoding='utf-8') as f:
+    with open(arquivo_rotas_fuzzy, 'r', encoding='utf-8') as f:
         linhas = f.readlines()[1:] # pula o cabeçalho
         for linha in linhas:
             if linha.strip():
@@ -31,16 +31,27 @@ def carregar_mapa(arquivo_pontos, arquivo_rotas):
                 nome_rota = partes[1]
                 origem = partes[2]
                 destino = partes[3]
-                comprimento = float(partes[4])
+                comprimento_real = float(partes[4])
                 # adiciona a estrada ligando a origem ao destino com o peso (distância)
-                mapa.add_edge(origem, destino, weight=comprimento, nome_rota=nome_rota)
+
+                asfalto = float(partes[5])
+                trafego = float(partes[6])
+
+                # operador fuzzy avalia a situação da estrada e devolve o multiplicador
+                multiplicador = avaliar_rodovia(asfalto, trafego)
+
+                # o novo peso da aresta é a distância real punida pelo multiplicador
+                custo_fuzzy = comprimento_real * multiplicador
+
+
+                mapa.add_edge(origem, destino, weight=custo_fuzzy, comprimento_real=comprimento_real, nome_rota=nome_rota)
                 
     return mapa
 
 # teste de carregamento inicial
-G = carregar_mapa('pontos.txt', 'rotas.txt')
+G = carregar_mapa_fuzzy('pontos.txt', 'rotas_fuzzy.txt')
 
-print(f"Mapa carregado com sucesso!")
+print(f"Mapa com Fuzzy carregado com sucesso!")
 print(f"Total de Cidades/Entroncamentos: {G.number_of_nodes()}")
 print(f"Total de Estradas: {G.number_of_edges()}")
 
@@ -343,7 +354,7 @@ def plotar_mapa(grafo, rota_vencedora):
     plt.show() # Abre a janela com o gráfico
 
 
-gerar_gif_evolucao(G, rotas_gif, "evolucao_rotas.gif")
+gerar_gif_evolucao(G, rotas_gif, "evolucao_rotas_fuzzy.gif")
 
 # plota a curva de convergencia do AG
 plotar_convergencia(historico)
