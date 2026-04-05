@@ -17,9 +17,9 @@ def gerar_dataset_fuzzy(arquivo_entrada, arquivo_saida):
 
         for linha in linhas[1:]:
             if linha.strip():
-                # onde 0 é cheio de crateras e 10 é a estrada da paraiba
+                # onde 0 é cheio de crateras e 10 é a estrada da boa
                 asfalto = random.randint(0,10)
-                # onde 0 é o deserto e 100 é sao paulo no dia mais leve
+                # onde 0 é o deserto e 100 é o caos de tráfego
                 trafego = random.randint(0,100)
 
                 nova_linha = f"{linha.strip()};{asfalto};{trafego}\n"

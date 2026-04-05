@@ -43,8 +43,8 @@ O que o nosso código faz?
 
 O cromossomo do Filho 1 é reescrito. Aquela volta inútil pelo litoral norte foi completamente dizimada. O custo despenca de 500 km para 380 km de uma vez só! É aquele degrau gigante que você viu no gráfico de convergência.
 
-### Geração 80: Chegano no Ótimo Global
+### Geração 80: Chegando no Ótimo Global
 
 Ao longo das próximas dezenas de gerações, esses pequenos cortes, costuras e mutações continuam podando qualquer cidade que desvie da linha reta. As rotas que dão voltas perdem os torneios e morrem. As mais diretas sobrevivem e passam seus genes para frente.
 
-Quando o loop de 80 gerações termina, o cromossomo final que sobreviveu e está salvo na variável `melhor_rota_global` é uma "régua" matemática perfeita, passando unicamente pelas cidades que formam a menor distância física possível entre Natal e Pau dos Ferros.
+Quando o loop de 80 gerações termina, o cromossomo final que sobreviveu e está salvo na variável `melhor_rota_global`, passando unicamente pelas cidades que formam a menor distância física possível entre Natal e Pau dos Ferros.
